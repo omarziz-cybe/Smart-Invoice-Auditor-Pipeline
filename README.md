@@ -13,15 +13,26 @@ An enterprise-ready **Intelligent Document Processing (IDP)** pipeline built wit
 
 ## 🏗️ System Architecture
 
-```mermaid
-graph LR
-    A[Raw Invoice Text / Document] --> B[n8n Workflow Trigger]
-    B --> C[Ollama LLM Extraction]
-    C --> D[JavaScript Financial Validation Engine]
-    D --> E{Is Math Valid?}
-    E -- Yes --> F[Google Sheets Archive]
-    E -- No --> G[Telegram Alert Discrepancy Flag]
+## 🏗️ System Architecture
 
+```text
+[Raw Invoice Text] 
+        │
+        ▼
+[n8n Workflow Trigger] 
+        │
+        ▼
+[Ollama LLM Extraction] 
+        │
+        ▼
+[JavaScript Validation Engine]
+        │
+   Is Math Valid?
+   ├── YES ──> [Google Sheets Archive]
+   └── NO  ──> [Telegram Alert with Errors]
+
+
+```
 
 ✨ Key Features
 Local & Privacy-Preserving: Powered by local Ollama models (qwen2.5:7b / llama3.2) to safeguard confidential financial records from third-party APIs.
