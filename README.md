@@ -1,4 +1,3 @@
-Markdown
 # ⚡ Smart Invoice Auditor Pipeline (Local & Privacy-First)
 
 An enterprise-ready **Intelligent Document Processing (IDP)** pipeline built with **n8n** and **Ollama (Local LLM)**. It autonomously parses unstructured financial documents, enforces mathematical integrity checks via a custom validation engine, and automates downstream actions (Google Sheets recording & Telegram alerts).
@@ -22,6 +21,8 @@ graph LR
     D --> E{Is Math Valid?}
     E -- Yes --> F[Google Sheets Archive]
     E -- No --> G[Telegram Alert Discrepancy Flag]
+
+
 ✨ Key Features
 Local & Privacy-Preserving: Powered by local Ollama models (qwen2.5:7b / llama3.2) to safeguard confidential financial records from third-party APIs.
 
@@ -44,7 +45,6 @@ Docker Desktop
 Ollama installed locally
 
 2. Pull the Local Model
-Bash
 ollama run qwen2.5:7b
 3. Import the Workflow
 In n8n, go to Workflows > Import from File.
