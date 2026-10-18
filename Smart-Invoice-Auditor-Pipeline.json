@@ -1,0 +1,349 @@
+{
+  "name": "Smart-Invoice-Auditor-Pipeline",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -944,
+        -384
+      ],
+      "id": "b2f75b5a-19a3-4cb2-81d2-fd96174d2964",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "8391facb-00a0-4baf-b196-cfb7b140ccf6",
+              "name": "invoice_raw_text",
+              "value": "INVOICE #INV-2024-089 Date: 15 October 2024 Vendor: TechCorp Solutions LLC Client: Future Labs Inc.  Items: 1. Cloud Server Hosting (Dedicated) - Qty: 2 - Price: $150.00 - Total: $300.00 2. SSL Wildcard Certificate - Qty: 1 - Price: $75.00 - Total: $75.00 3. Database Backup Storage (1TB) - Qty: 1 - Price: $25.00 - Total: $25.00  Subtotal: $400.00 Tax (14%): $56.00 Grand Total: $456.00",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        -528,
+        -352
+      ],
+      "id": "e90dded6-4ae3-4cf7-ac85-0113a1113382",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are a financial document parser. Extract the invoice details from the text below and return ONLY a valid raw JSON object. Do not wrap in markdown.\n\nJSON Format:\n{\n  \"invoice_number\": \"string\",\n  \"vendor_name\": \"string\",\n  \"invoice_date\": \"string\",\n  \"items\": [\n    {\n      \"description\": \"string\",\n      \"quantity\": number,\n      \"unit_price\": number,\n      \"total\": number\n    }\n  ],\n  \"subtotal\": number,\n  \"tax_amount\": number,\n  \"total_amount\": number\n}\n\nInvoice Text:\n{{ $json.invoice_raw_text }}",
+        "messages": {
+          "messageValues": []
+        },
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        -224,
+        -336
+      ],
+      "id": "6a2812ec-f7f2-434d-8bd9-7cd04ffc19b7",
+      "name": "Basic LLM Chain"
+    },
+    {
+      "parameters": {
+        "model": "llama3.2:3b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "typeVersion": 1,
+      "position": [
+        -352,
+        -160
+      ],
+      "id": "dddc942c-fd76-46f0-9d71-eb2016246aa9",
+      "name": "Ollama Chat Model",
+      "credentials": {
+        "ollamaApi": {
+          "id": "3YlsHIFU8X6bgldX",
+          "name": "Ollama account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $input.first().json.text;\n\n// تنظيف النص وتحويله إلى كائن JSON\nlet cleanText = raw.replace(/```json/g, '').replace(/```/g, '').trim();\nlet invoice = JSON.parse(cleanText);\n\n// التدقيق الحسابي للبنود والضرائب\nlet itemsSum = 0;\nlet errors = [];\n\nif (Array.isArray(invoice.items)) {\n  for (const item of invoice.items) {\n    let expected = Number((item.quantity * item.unit_price).toFixed(2));\n    if (Math.abs(expected - item.total) > 0.01) {\n      errors.push(`خطأ في بند ${item.description}: المتوقع ${expected} والمكتوب ${item.total}`);\n    }\n    itemsSum += item.total;\n  }\n}\n\nitemsSum = Number(itemsSum.toFixed(2));\nlet expectedTotal = Number((invoice.subtotal + invoice.tax_amount).toFixed(2));\n\nif (Math.abs(itemsSum - invoice.subtotal) > 0.01) {\n  errors.push(`خطأ في المجموع الفرعي: مجموع البنود ${itemsSum} والمذكور ${invoice.subtotal}`);\n}\n\nif (Math.abs(expectedTotal - invoice.total_amount) > 0.01) {\n  errors.push(`خطأ في الإجمالي الكلي: المتوقع ${expectedTotal} والمذكور ${invoice.total_amount}`);\n}\n\n// النتيجة النهائية مع حالة التدقيق\nreturn [{\n  json: {\n    ...invoice,\n    is_valid: errors.length === 0,\n    validation_errors: errors\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        160,
+        -320
+      ],
+      "id": "795c7be2-1eb5-4af7-8bf2-c4cba9479fe4",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "97d3772e-e3c8-4a19-9665-8dad0548bc6f",
+              "leftValue": "={{ $json.is_valid }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        384,
+        -320
+      ],
+      "id": "1cbb2f1e-d537-41c5-8261-02e1babd1da0",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "url",
+          "value": "https://docs.google.com/spreadsheets/d/1otNqxiXkQ2GvFWEM6wCiDOI6DF5l5z8eQ1EIAJDBJK4/edit?usp=drivesdk",
+          "__regex": "https:\\/\\/(?:drive|docs)\\.google\\.com(?:\\/.*|)\\/d\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1otNqxiXkQ2GvFWEM6wCiDOI6DF5l5z8eQ1EIAJDBJK4/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Invoice Number": "={{ $json.invoice_number }}",
+            "Vendor Name": "={{ $json.vendor_name }}",
+            "Date": "={{ $json.invoice_date }}",
+            "Subtotal": "={{ $json.subtotal }}",
+            "Tax": "={{ $json.tax_amount }}",
+            "Total Amount": "={{ $json.total_amount }}",
+            "Status": "Verified"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Invoice Number",
+              "displayName": "Invoice Number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Vendor Name",
+              "displayName": "Vendor Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Date",
+              "displayName": "Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Subtotal",
+              "displayName": "Subtotal",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Tax",
+              "displayName": "Tax",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Total Amount",
+              "displayName": "Total Amount",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        608,
+        -416
+      ],
+      "id": "fcb824a4-6193-4d01-97a1-ca12c76a6fb3",
+      "name": "Append row in sheet",
+      "credentials": {
+        "googleApi": {
+          "id": "kKVoDT7N7UM4EF68",
+          "name": "Google Service Account account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "8535394326",
+        "text": "= تنبيه: فشل التحقق من الفاتورة رقم: {{ $json.invoice_number }}  المورد: {{ $json.vendor_name }}  أسباب التضارب: {{ $json.validation_errors.join('\\n') }}  يرجى المراجعة اليدوية قبل الاعتماد.",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        608,
+        -224
+      ],
+      "id": "c554132a-60bf-4ecc-bf22-00960ce648eb",
+      "name": "Send a text message",
+      "webhookId": "e0d38bbe-dfb4-4041-bd27-f1856a303a7a",
+      "credentials": {
+        "telegramApi": {
+          "id": "Hgp7IaQxUC57rs4h",
+          "name": "Telegram account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "be8c7543-2582-4172-ac8a-e94619e1c6f9",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "afc1d0b4b561d487082f87f96e39bbd324ea41222f0052e9ca5dc2f6b778a9d4"
+  },
+  "nodeGroups": [],
+  "id": "t7Owjuf7EwJX9ewe",
+  "tags": []
+}
