@@ -13,23 +13,14 @@ An enterprise-ready **Intelligent Document Processing (IDP)** pipeline built wit
 
 ## 🏗️ System Architecture
 
-## 🏗️ System Architecture
-
-```text
-[Raw Invoice Text] 
-        │
-        ▼
-[n8n Workflow Trigger] 
-        │
-        ▼
-[Ollama LLM Extraction] 
-        │
-        ▼
-[JavaScript Validation Engine]
-        │
-   Is Math Valid?
-   ├── YES ──> [Google Sheets Archive]
-   └── NO  ──> [Telegram Alert with Errors]
+```mermaid
+graph LR
+    A[Raw Invoice Text / Document] --> B[n8n Workflow Trigger]
+    B --> C[Ollama LLM Extraction]
+    C --> D[JavaScript Financial Validation Engine]
+    D --> E{Is Math Valid?}
+    E -- Yes --> F[Google Sheets Archive]
+    E -- No --> G[Telegram Alert Discrepancy Flag]
 
 
 ```
@@ -54,6 +45,8 @@ Structured Archival: Appends sanitized, validated invoice metadata directly into
 Docker Desktop
 
 Ollama installed locally
+
+2. Pull the Local Model
 
 2. Pull the Local Model
 ollama run qwen2.5:7b
